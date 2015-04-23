@@ -5,8 +5,20 @@ class RespondersController < ApplicationController
 	def show
 	end
 
+	def index
+		@responders = Responder.all
+	end
+
+	def update
+		if @responder.update_attributes(permitted_params)
+		  render 'show'
+		else
+			render_errors_for(@responder)
+		end
+	end
+
 	def create
-    @responder = Responder.new(responder_params)
+    @responder = Responder.new(permitted_params)
     if @responder.save
     	render 'show', status: 201
     else
@@ -20,11 +32,11 @@ class RespondersController < ApplicationController
 	  	@responder = Responder.find_by!(name: params[:id])
 	  end
 
-	  def responder_params
-	  	params.require(:responder).permit(permitted_params)
+	  def permitted_params
+	  	params.require(:responder).permit(action_params[params[:action]])
 	  end
 
-	  def permitted_params
-	  	[:type, :name, :capacity]
+	  def action_params
+	  	{ 'create' => [:type, :name, :capacity], 'update' => [:on_duty] }
 	  end
 end
