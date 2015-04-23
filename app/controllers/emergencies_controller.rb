@@ -14,7 +14,7 @@ class EmergenciesController < ApplicationController
 		if @emergency.save
 			render 'show', status: 201
 		else
-			render_errors
+			render_errors_for(@emergency)
 		end
 	end
 
@@ -22,15 +22,11 @@ class EmergenciesController < ApplicationController
     if @emergency.update_attributes(emergency_params)
     	render 'show'
     else
-    	render_errors
+    	render_errors_for(@emergency)
     end
 	end
 
 	private
-
-	  def render_errors
-	  	render json: { message: @emergency.errors }, status: 422
-	  end
 
 	  def find_emergency
 	  	@emergency = Emergency.find_by!(code: params[:id])
