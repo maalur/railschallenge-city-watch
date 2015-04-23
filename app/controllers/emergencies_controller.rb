@@ -42,7 +42,6 @@ class EmergenciesController < ApplicationController
 
 	  def permitted_params
 	  	{
-	  		"show" => [:code],
 	  		"create" => [:code],
 	  		"update" => [:resolved_at]
 	  	}[params[:action]] + [:fire_severity, :police_severity, :medical_severity]
