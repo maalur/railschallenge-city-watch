@@ -35,6 +35,9 @@ ActiveRecord::Schema.define(version: 20150423051252) do
     t.datetime "updated_at",                     null: false
   end
 
+  add_index "responders", ["capacity"], name: "index_responders_on_capacity"
+  add_index "responders", ["emergency_code"], name: "index_responders_on_emergency_code"
   add_index "responders", ["name"], name: "index_responders_on_name", unique: true
+  add_index "responders", ["type"], name: "index_responders_on_type"
 
 end

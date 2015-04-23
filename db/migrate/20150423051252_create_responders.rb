@@ -11,5 +11,8 @@ class CreateResponders < ActiveRecord::Migration
     end
 
     add_index :responders, :name, unique: true
+    add_index :responders, :emergency_code
+    add_index :responders, :capacity
+    add_index :responders, :type
   end
 end
