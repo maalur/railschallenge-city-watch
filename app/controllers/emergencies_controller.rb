@@ -7,11 +7,13 @@ class EmergenciesController < ApplicationController
 
 	def index
     @emergencies = Emergency.all
+    @full_responses = [@emergencies.with_full_response.length, @emergencies.length]
   end
 
 	def create
 		@emergency = Emergency.new(emergency_params)
 		if @emergency.save
+			Responder.dispatch_for(@emergency) if @emergency.response_required?
 			render 'show', status: 201
 		else
 			render_errors_for(@emergency)
@@ -20,6 +22,7 @@ class EmergenciesController < ApplicationController
 
 	def update
     if @emergency.update_attributes(emergency_params)
+    	@emergency.responders.each(&:unassign)
     	render 'show'
     else
     	render_errors_for(@emergency)

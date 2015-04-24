@@ -19,8 +19,9 @@ ActiveRecord::Schema.define(version: 20150423051252) do
     t.integer  "police_severity"
     t.integer  "medical_severity"
     t.time     "resolved_at"
-    t.datetime "created_at",       null: false
-    t.datetime "updated_at",       null: false
+    t.boolean  "full_response",    default: false
+    t.datetime "created_at",                       null: false
+    t.datetime "updated_at",                       null: false
   end
 
   add_index "emergencies", ["code"], name: "index_emergencies_on_code", unique: true
