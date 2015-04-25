@@ -15,7 +15,7 @@ class RespondersController < ApplicationController
   def update
     find_responder
     if @responder.update_attributes(permitted_params)
-      render :show, status: :updated
+      render :show, status: :ok
     else
       render_errors_for(@responder)
     end

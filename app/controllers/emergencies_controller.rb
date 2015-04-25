@@ -22,7 +22,7 @@ class EmergenciesController < ApplicationController
     find_emergency
     if @emergency.update_attributes(emergency_params)
       @emergency.adjust_response!
-      render :show, status: :updated
+      render :show, status: :ok
     else
       render_errors_for(@emergency)
     end

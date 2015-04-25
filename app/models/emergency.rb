@@ -35,7 +35,8 @@ class Emergency < ActiveRecord::Base
 
   #
   # Dismisses assigned responders if the emergency is resolved.
-  # Can be improved to only dismiss some responders if a severity is updated.
+  # Can be improved to only dismiss some responders if a severity is updated
+  # but the emergency is still unresolved.
   #
   def adjust_response!
     responders.each(&:dismiss!) if resolved_at
