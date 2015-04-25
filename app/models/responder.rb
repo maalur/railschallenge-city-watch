@@ -11,8 +11,6 @@ class Responder < ActiveRecord::Base
   scope :unassigned, -> { where emergency_code: nil }
   scope :on_duty, -> { where on_duty: true }
   scope :available, -> { on_duty.unassigned }
-  scope :capacity_under, -> (amount) { where "capacity <= ?", amount }
-  scope :capable, -> { on_duty.unassigned.order(capacity: :asc) }
 
 
   def self.responder_capacities
@@ -28,31 +26,21 @@ class Responder < ActiveRecord::Base
   	capacities
   end
 
-  def self.capacities_of(responders)
-    responders.pluck(:capacity).reduce(0,:+)
-  end
-
   def self.dispatch_for(emergency)
     full_response = true
 
     RESPONDER_TYPES.each do |type|
       severity = emergency.send("#{type.downcase}_severity")
-      responders = all_by_type(type).available.capacity_under(severity).order(capacity: :desc)
-      capacity_levels = responders.pluck(:capacity)
+      responders = all_by_type(type).available.order(capacity: :desc)
+      available_capacities = responders.pluck(:capacity)
 
-      capacity_levels.each do |capacity|
-        if severity - capacity >= 0
-          severity -= capacity
-          responders.find_by(capacity: capacity).assign_to(emergency)
-        end
+      best_available, response_size = best_available_from( available_capacities, severity )
+
+      best_available.each do |capacity|
+        responders.find_by_capacity(capacity).assign_to(emergency)
       end
 
-      if severity > 0 && responder = all_by_type(type).capable.first
-        severity -= responder.capacity
-        responder.assign_to(emergency)
-      end
-
-      full_response = false if severity > 0
+      full_response = false if severity > response_size
     end
 
     emergency.response_met! if full_response
@@ -65,4 +53,29 @@ class Responder < ActiveRecord::Base
   def unassign
     update_attributes(emergency_code: nil)
   end
+
+  private
+
+    def self.best_available_from(collection, value)
+      i = 0
+      sum = 0
+      sub_set = []
+      until sum == value || collection == sub_set
+        sum = 0 - i
+        sub_set = []
+        collection.each do |n|
+          if sum <= value - n
+            sum += n
+            sub_set << n
+          end
+        end
+        i += 1
+      end
+      [sub_set, sum + i]
+    end
+
+    def self.capacities_of(responders)
+      responders.pluck(:capacity).reduce(0,:+)
+    end
+
 end
