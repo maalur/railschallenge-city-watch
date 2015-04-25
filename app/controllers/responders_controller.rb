@@ -1,7 +1,6 @@
 class RespondersController < ApplicationController
-  before_action :find_responder, only: [:show, :update]
-
   def show
+    find_responder
   end
 
   def index
@@ -14,8 +13,9 @@ class RespondersController < ApplicationController
   end
 
   def update
+    find_responder
     if @responder.update_attributes(permitted_params)
-      render 'show'
+      render :show, status: :updated
     else
       render_errors_for(@responder)
     end
@@ -24,7 +24,7 @@ class RespondersController < ApplicationController
   def create
     @responder = Responder.new(permitted_params)
     if @responder.save
-      render 'show', status: 201
+      render :show, status: :created
     else
       render_errors_for(@responder)
     end

@@ -5,25 +5,54 @@ class Emergency < ActiveRecord::Base
 
   has_many :responders, primary_key: :code, foreign_key: :emergency_code
 
-  scope :with_full_response, -> { where full_response: true }
-
+  #
+  # Returns an array of Responder names from responders assigned to the emergency.
+  #
   def responders_names
     responders.pluck(:name)
   end
 
+  #
+  # Wrapper method for updating full_response to true.
+  #
   def full_response!
     update_attributes(full_response: true)
   end
 
+  #
+  # Returns a boolean value of response necessity.
+  #
   def response_required?
-    if fire_severity + police_severity + medical_severity > 0
-      true
-    else
-      full_response!
-      false
-    end
+    fire_severity + police_severity + medical_severity > 0
   end
 
+  #
+  # Checks if a response is needed then requests a dispatch or updates full_response.
+  #
+  def dispatch!
+    full_response! if !response_required? || Responder.dispatch_for(self)
+  end
+
+  #
+  # Dismisses assigned responders if the emergency is resolved.
+  # Can be improved to only dismiss some responders if a severity is updated.
+  #
+  def adjust_response!
+    responders.each(&:dismiss!) if resolved_at
+  end
+
+  #
+  # Returns the 'best' selection of responders and the total capacity.
+  #
+  # This is an implementation of the coin change algorithm that only
+  # looks for exact matches. If an exact match is not found, it increases
+  # the match value by 1 and tries again until a match is found. This
+  # returns the collection of responders that can provide the lowest full
+  # response.
+  #
+  # responders: ActiveRecord::Relation
+  # severity: integer
+  #
   def find_best_available(responders, severity)
     max_capacity = responders.pluck(:capacity).reduce(0, :+)
     i = 0

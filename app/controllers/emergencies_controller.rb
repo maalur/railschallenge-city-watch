@@ -1,28 +1,28 @@
 class EmergenciesController < ApplicationController
-  before_action :find_emergency, only: [:show, :update]
-
   def show
+    find_emergency
   end
 
   def index
     @emergencies = Emergency.all
-    @full_responses = [@emergencies.with_full_response.length, @emergencies.length]
+    @full_responses = [@emergencies.where(full_response: true).length, @emergencies.length]
   end
 
   def create
     @emergency = Emergency.new(emergency_params)
     if @emergency.save
-      Responder.dispatch_for(@emergency) if @emergency.response_required?
-      render 'show', status: 201
+      @emergency.dispatch!
+      render :show, status: :created
     else
       render_errors_for(@emergency)
     end
   end
 
   def update
+    find_emergency
     if @emergency.update_attributes(emergency_params)
-      @emergency.responders.each(&:unassign)
-      render 'show'
+      @emergency.adjust_response!
+      render :show, status: :updated
     else
       render_errors_for(@emergency)
     end
