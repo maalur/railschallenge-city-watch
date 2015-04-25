@@ -4,7 +4,7 @@ class EmergenciesController < ApplicationController
   end
 
   def index
-    @emergencies = Emergency.all
+    @emergencies = Emergency.includes(:responders).all
     @full_responses = [@emergencies.where(full_response: true).length, @emergencies.length]
   end
 

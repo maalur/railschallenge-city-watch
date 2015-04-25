@@ -9,7 +9,7 @@ class Emergency < ActiveRecord::Base
   # Returns an array of Responder names from responders assigned to the emergency.
   #
   def responders_names
-    responders.pluck(:name)
+    responders.map(&:name)
   end
 
   #
@@ -27,7 +27,7 @@ class Emergency < ActiveRecord::Base
   end
 
   #
-  # Checks if a response is needed then requests a dispatch or updates full_response.
+  # Requests a dispatch if a response is needed then updates full_response.
   #
   def dispatch!
     full_response! if !response_required? || Responder.dispatch_for(self)
