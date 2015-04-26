@@ -1,13 +1,4 @@
 class EmergenciesController < ApplicationController
-  def show
-    find_emergency
-  end
-
-  def index
-    @emergencies = Emergency.includes(:responders).all
-    @full_responses = [@emergencies.where(full_response: true).length, @emergencies.length]
-  end
-
   def create
     @emergency = Emergency.new(emergency_params)
     if @emergency.save
@@ -16,6 +7,15 @@ class EmergenciesController < ApplicationController
     else
       render_errors_for(@emergency)
     end
+  end
+
+  def index
+    @emergencies = Emergency.includes(:responders).all
+    @full_responses = [@emergencies.where(full_response: true).length, @emergencies.length]
+  end
+
+  def show
+    find_emergency
   end
 
   def update
@@ -30,12 +30,12 @@ class EmergenciesController < ApplicationController
 
   private
 
-  def find_emergency
-    @emergency = Emergency.find_by!(code: params[:id])
-  end
-
   def emergency_params
     params.require(:emergency).permit(permitted_params)
+  end
+
+  def find_emergency
+    @emergency = Emergency.find_by!(code: params[:id])
   end
 
   def permitted_params

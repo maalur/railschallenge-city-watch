@@ -13,17 +13,6 @@ class Responder < ActiveRecord::Base
   scope :available, -> { on_duty.unassigned }
 
   #
-  # Returns a hash of the capacity levels for all responder types.
-  #
-  def self.responder_capacities
-    capacities = {}
-    RESPONDER_TYPES.each do |type|
-      capacities[type] = capacities_for(type)
-    end
-    capacities
-  end
-
-  #
   # Resturns an array of capacity levels for a set of responders.
   #
   # type: string
@@ -39,30 +28,12 @@ class Responder < ActiveRecord::Base
   end
 
   #
-  # Calls for assignment of responders to an emergency by type.
-  # Returns true if a full response for the emergency is met.
+  # Returns the sum of capacities from a collection of responders.
   #
-  # emergency: Emergency instance
+  # responders: ActiveRecord::Relation
   #
-  def self.dispatch_for(emergency)
-    full_response = true
-    capacities_map = map_of_available_capacities
-    RESPONDER_TYPES.each do |type|
-      full_response = false unless dispatch_by_type(emergency, type, capacities_map[type])
-    end
-    full_response
-  end
-
-  #
-  # Returns a hash of responder types with an array of available capacities.
-  #
-  # => { 'Fire' => [1, 2], 'Police' => [3, 4], 'Medical', [5, 6] }
-  #
-  def self.map_of_available_capacities
-    responders = Responder.available.order(capacity: :desc)
-    capacities_map = Hash.new([])
-    responders.each { |responder| capacities_map[responder.type] += [responder.capacity] }
-    capacities_map
+  def self.capacity_of(responders)
+    responders.pluck(:capacity).reduce(0, :+)
   end
 
   #
@@ -82,7 +53,22 @@ class Responder < ActiveRecord::Base
   end
 
   #
-  # Wrapper method for updating emergency_code
+  # Calls for assignment of responders to an emergency by type.
+  # Returns true if a full response for the emergency is met.
+  #
+  # emergency: Emergency instance
+  #
+  def self.dispatch_for(emergency)
+    full_response = true
+    capacities_map = map_of_available_capacities
+    RESPONDER_TYPES.each do |type|
+      full_response = false unless dispatch_by_type(emergency, type, capacities_map[type])
+    end
+    full_response
+  end
+
+  #
+  # Wrapper method for updating emergency_code for a collection.
   #
   # responders: ActiveRecord::Relation
   # emergency: Emergency instance
@@ -92,18 +78,32 @@ class Responder < ActiveRecord::Base
   end
 
   #
+  # Returns a hash of responder types with an array of available capacities.
+  #
+  # => { 'Fire' => [1, 2], 'Police' => [3, 4], 'Medical', [5, 6] }
+  #
+  def self.map_of_available_capacities
+    responders = Responder.available.order(capacity: :desc)
+    capacities_map = Hash.new([])
+    responders.each { |responder| capacities_map[responder.type] += [responder.capacity] }
+    capacities_map
+  end
+
+  #
+  # Returns a hash of the capacity levels for all responder types.
+  #
+  def self.responder_capacities
+    capacities = {}
+    RESPONDER_TYPES.each do |type|
+      capacities[type] = capacities_for(type)
+    end
+    capacities
+  end
+
+  #
   # Wrapper method for updating emergency_code to nil.
   #
   def dismiss!
     update_attributes(emergency_code: nil)
-  end
-
-  #
-  # Returns the sum of capacities from a collection of responders.
-  #
-  # responders: ActiveRecord::Relation
-  #
-  def self.capacity_of(responders)
-    responders.pluck(:capacity).reduce(0, :+)
   end
 end

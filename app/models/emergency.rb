@@ -6,24 +6,12 @@ class Emergency < ActiveRecord::Base
   has_many :responders, primary_key: :code, foreign_key: :emergency_code
 
   #
-  # Returns an array of Responder names from responders assigned to the emergency.
+  # Dismisses assigned responders if the emergency is resolved.
+  # Can be improved to only dismiss some responders if a severity is updated
+  # but the emergency is still unresolved.
   #
-  def responders_names
-    responders.map(&:name)
-  end
-
-  #
-  # Wrapper method for updating full_response to true.
-  #
-  def full_response!
-    update_attributes(full_response: true)
-  end
-
-  #
-  # Returns a boolean value of response necessity.
-  #
-  def response_required?
-    fire_severity + police_severity + medical_severity > 0
+  def adjust_response!
+    responders.each(&:dismiss!) if resolved_at
   end
 
   #
@@ -31,15 +19,6 @@ class Emergency < ActiveRecord::Base
   #
   def dispatch!
     full_response! if !response_required? || Responder.dispatch_for(self)
-  end
-
-  #
-  # Dismisses assigned responders if the emergency is resolved.
-  # Can be improved to only dismiss some responders if a severity is updated
-  # but the emergency is still unresolved.
-  #
-  def adjust_response!
-    responders.each(&:dismiss!) if resolved_at
   end
 
   #
@@ -77,5 +56,26 @@ class Emergency < ActiveRecord::Base
     end
 
     [best_available, severity <= response + i]
+  end
+
+  #
+  # Wrapper method for updating full_response to true.
+  #
+  def full_response!
+    update_attributes(full_response: true)
+  end
+
+  #
+  # Returns an array of Responder names from responders assigned to the emergency.
+  #
+  def responders_names
+    responders.map(&:name)
+  end
+
+  #
+  # Returns a boolean value of response necessity.
+  #
+  def response_required?
+    fire_severity + police_severity + medical_severity > 0
   end
 end
