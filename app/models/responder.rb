@@ -99,11 +99,4 @@ class Responder < ActiveRecord::Base
     end
     capacities
   end
-
-  #
-  # Wrapper method for updating emergency_code to nil.
-  #
-  def dismiss!
-    update_attributes(emergency_code: nil)
-  end
 end

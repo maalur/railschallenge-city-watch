@@ -11,7 +11,7 @@ class Emergency < ActiveRecord::Base
   # but the emergency is still unresolved.
   #
   def adjust_response!
-    responders.each(&:dismiss!) if resolved_at
+    responders.update_all(emergency_code: nil) if resolved_at
   end
 
   #
