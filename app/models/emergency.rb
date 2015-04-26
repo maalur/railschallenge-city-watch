@@ -43,19 +43,21 @@ class Emergency < ActiveRecord::Base
   end
 
   #
-  # Returns the 'best' selection of responders and the total capacity.
+  # Returns an array of:
+  #   - array[integers]
+  #   - boolean
   #
   # This is an implementation of the coin change algorithm that only
   # looks for exact matches. If an exact match is not found, it increases
   # the match value by 1 and tries again until a match is found. This
-  # returns the collection of responders that can provide the lowest full
+  # returns the collection of capacities that can provide the lowest full
   # response.
   #
-  # responders: ActiveRecord::Relation
+  # available: array[integer]
   # severity: integer
   #
-  def find_best_available(responders, severity)
-    max_capacity = responders.pluck(:capacity).reduce(0, :+)
+  def find_best(available, severity)
+    max_capacity = available.reduce(0, :+)
     i = 0
     response = 0
     best_available = []
@@ -64,17 +66,16 @@ class Emergency < ActiveRecord::Base
       best_available = []
       response = 0 - i
 
-      responders.each do |responder|
-        capacity = responder.capacity
+      available.each do |capacity|
         if response <= severity - capacity
           response += capacity
-          best_available << responder
+          best_available << capacity
         end
       end
 
       i += 1
     end
 
-    [best_available, response + i]
+    [best_available, severity <= response + i]
   end
 end

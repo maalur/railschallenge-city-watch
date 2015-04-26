@@ -7,9 +7,9 @@ class Responder < ActiveRecord::Base
 
   RESPONDER_TYPES = %w(Fire Medical Police)
 
-  scope :all_by_type, -> (type) { where type: type }
-  scope :unassigned, -> { where emergency_code: nil }
-  scope :on_duty, -> { where on_duty: true }
+  scope :all_by_type, -> (type) { where(type: type) }
+  scope :unassigned, -> { where(emergency_code: nil) }
+  scope :on_duty, -> { where(on_duty: true) }
   scope :available, -> { on_duty.unassigned }
 
   #
@@ -39,32 +39,43 @@ class Responder < ActiveRecord::Base
   end
 
   #
-  # Assigns responders to an emergency by type.
+  # Calls for assignment of responders to an emergency by type.
   # Returns true if a full response for the emergency is met.
   #
   # emergency: Emergency instance
   #
   def self.dispatch_for(emergency)
     full_response = true
-
     RESPONDER_TYPES.each do |type|
-      responders = all_by_type(type).available.order(capacity: :desc)
-      severity = emergency.send("#{type.downcase}_severity")
-      best_available, response_size = emergency.find_best_available(responders, severity)
-      best_available.each { |responder| responder.assign_to!(emergency) }
-      full_response = false if severity > response_size
+      full_response = false unless dispatch_for_by_type(emergency, type)
     end
-
     full_response
   end
 
   #
-  # Wrapper method for updating emergency_code to an assigned emergency's code.
+  # Assigns responders to an emergency by type.
+  # Returns true if a full response for the emergency is met.
   #
   # emergency: Emergency instance
+  # type: string
   #
-  def assign_to!(emergency)
-    update_attributes(emergency_code: emergency.code)
+  def self.dispatch_for_by_type(emergency, type)
+    severity = emergency.send("#{type.downcase}_severity")
+    available_capacities = all_by_type(type).available.order(capacity: :desc).pluck(:capacity)
+    best_capacities, response_met = emergency.find_best(available_capacities, severity)
+    best_responders = all_by_type(type).available.where(capacity: best_capacities)
+    group_assign_to(best_responders, emergency)
+    response_met
+  end
+
+  #
+  # Wrapper method for updating emergency_code
+  #
+  # responders: ActiveRecord::Relation
+  # emergency: Emergency instance
+  #
+  def self.group_assign_to(responders, emergency)
+    responders.update_all(emergency_code: emergency.code)
   end
 
   #
