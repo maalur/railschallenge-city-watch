@@ -13,27 +13,19 @@ class Responder < ActiveRecord::Base
   scope :available, -> { on_duty.unassigned }
 
   #
-  # Resturns an array of capacity levels for a set of responders.
+  # Returns a hash of responder types with an array of available capacities.
   #
-  # type: string
+  # => { 'Fire' => [1, 2], 'Police' => [3, 4], 'Medical', [5, 6] }
   #
-  def self.capacities_for(type)
-    responders = all_by_type(type)
-    [
-      capacity_of(responders),
-      capacity_of(responders.unassigned),
-      capacity_of(responders.on_duty),
-      capacity_of(responders.available)
-    ]
-  end
+  def self.available_capacities_map
+    responders = available.order(capacity: :desc)
+    capacities_map = Hash.new([])
 
-  #
-  # Returns the sum of capacities from a collection of responders.
-  #
-  # responders: ActiveRecord::Relation
-  #
-  def self.capacity_of(responders)
-    responders.pluck(:capacity).reduce(0, :+)
+    responders.each do |responder|
+      capacities_map[responder.type] += [responder.capacity]
+    end
+
+    capacities_map
   end
 
   #
@@ -42,13 +34,17 @@ class Responder < ActiveRecord::Base
   #
   # emergency: Emergency instance
   # type: string
-  # available_capacities: array[integer]
+  # available_capacities: array of integers
   #
   def self.dispatch_by_type(emergency, type, available_capacities)
     severity = emergency.send("#{type.downcase}_severity")
     best_capacities, response_met = emergency.find_best(available_capacities, severity)
-    best_responders = all_by_type(type).available.where(capacity: best_capacities)
-    group_assign_to(best_responders, emergency)
+
+    all_by_type(type)
+      .available
+      .where(capacity: best_capacities)
+      .update_all(emergency_code: emergency.code)
+
     response_met
   end
 
@@ -60,43 +56,46 @@ class Responder < ActiveRecord::Base
   #
   def self.dispatch_for(emergency)
     full_response = true
-    capacities_map = map_of_available_capacities
+    capacities_map = available_capacities_map
+
     RESPONDER_TYPES.each do |type|
       full_response = false unless dispatch_by_type(emergency, type, capacities_map[type])
     end
+
     full_response
   end
 
   #
-  # Wrapper method for updating emergency_code for a collection.
+  # Returns a hash of the total capacity levels for all responder types.
   #
-  # responders: ActiveRecord::Relation
-  # emergency: Emergency instance
+  # => { 'Fire' => [1, 1, 1, 1], 'Police' => [3, 3, 3, 3], 'Medical', [0, 0, 0, 0] }
   #
-  def self.group_assign_to(responders, emergency)
-    responders.update_all(emergency_code: emergency.code)
-  end
+  def self.total_capacities_map
+    capacities_hash = Hash.new { |hash, key| hash[key] = [0, 0, 0, 0] }
 
-  #
-  # Returns a hash of responder types with an array of available capacities.
-  #
-  # => { 'Fire' => [1, 2], 'Police' => [3, 4], 'Medical', [5, 6] }
-  #
-  def self.map_of_available_capacities
-    responders = Responder.available.order(capacity: :desc)
-    capacities_map = Hash.new([])
-    responders.each { |responder| capacities_map[responder.type] += [responder.capacity] }
-    capacities_map
-  end
-
-  #
-  # Returns a hash of the capacity levels for all responder types.
-  #
-  def self.responder_capacities
-    capacities = {}
-    RESPONDER_TYPES.each do |type|
-      capacities[type] = capacities_for(type)
+    find_each do |responder|
+      responder.add_capacity_to(capacities_hash[responder.type])
     end
-    capacities
+
+    capacities_hash
+  end
+
+  #
+  # Adds responder capacity to appropriate categories.
+  #
+  # capacity_array: [int, int, int, int]
+  #
+  def add_capacity_to(capacity_array)
+    capacity_array[0] += capacity
+    capacity_array[1] += capacity unless emergency_code?
+    capacity_array[2] += capacity if on_duty?
+    capacity_array[3] += capacity if available?
+  end
+
+  #
+  # Returns boolean of responder availability.
+  #
+  def available?
+    on_duty? && !emergency_code
   end
 end

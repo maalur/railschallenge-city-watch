@@ -7,7 +7,7 @@ class Emergency < ActiveRecord::Base
 
   #
   # Dismisses assigned responders if the emergency is resolved.
-  # Can be improved to only dismiss some responders if a severity is updated
+  # Can be improved to dismiss or assign responders if a severity is updated
   # but the emergency is still unresolved.
   #
   def adjust_response!
@@ -15,7 +15,7 @@ class Emergency < ActiveRecord::Base
   end
 
   #
-  # Requests a dispatch if a response is needed then updates full_response.
+  # Requests a dispatch if a response is needed, then updates full_response.
   #
   def dispatch!
     full_response! if !response_required? || Responder.dispatch_for(self)
@@ -23,17 +23,19 @@ class Emergency < ActiveRecord::Base
 
   #
   # Returns an array of:
-  #   - array[integers]
+  #   - array of integers
   #   - boolean
   #
   # This is an implementation of the coin change algorithm that only
   # looks for exact matches. If an exact match is not found, it increases
   # the match value by 1 and tries again until a match is found. This
   # returns the collection of capacities that can provide the lowest full
-  # response.
+  # response, if a full response can be met.
   #
-  # available: array[integer]
+  # available: array of integers
   # severity: integer
+  #
+  # emergency.find_best([5, 4, 2, 1], 8) => [[5, 2, 1], true]
   #
   def find_best(available, severity)
     max_capacity = available.reduce(0, :+)
@@ -66,7 +68,7 @@ class Emergency < ActiveRecord::Base
   end
 
   #
-  # Returns an array of Responder names from responders assigned to the emergency.
+  # Returns an array of the names of responders assigned to the emergency.
   #
   def responders_names
     responders.map(&:name)

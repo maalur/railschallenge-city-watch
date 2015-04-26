@@ -10,7 +10,7 @@ class RespondersController < ApplicationController
 
   def index
     if params[:show] == 'capacity'
-      @capacities = Responder.responder_capacities
+      @capacities = Responder.total_capacities_map
       render json: { capacity: @capacities }
     else
       @responders = Responder.all
@@ -32,8 +32,8 @@ class RespondersController < ApplicationController
 
   private
 
-  def action_params
-    { 'create' => [:type, :name, :capacity], 'update' => [:on_duty] }
+  def params_for_action
+    { 'create' => [:type, :name, :capacity], 'update' => [:on_duty] }[params[:action]]
   end
 
   def find_responder
@@ -41,6 +41,6 @@ class RespondersController < ApplicationController
   end
 
   def permitted_params
-    params.require(:responder).permit(action_params[params[:action]])
+    params.require(:responder).permit(params_for_action)
   end
 end

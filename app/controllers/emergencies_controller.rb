@@ -1,6 +1,6 @@
 class EmergenciesController < ApplicationController
   def create
-    @emergency = Emergency.new(emergency_params)
+    @emergency = Emergency.new(permitted_params)
     if @emergency.save
       @emergency.dispatch!
       render :show, status: :created
@@ -20,7 +20,7 @@ class EmergenciesController < ApplicationController
 
   def update
     find_emergency
-    if @emergency.update_attributes(emergency_params)
+    if @emergency.update_attributes(permitted_params)
       @emergency.adjust_response!
       render :show, status: :ok
     else
@@ -30,18 +30,16 @@ class EmergenciesController < ApplicationController
 
   private
 
-  def emergency_params
-    params.require(:emergency).permit(permitted_params)
+  def permitted_params
+    params.require(:emergency).permit(params_for_action)
   end
 
   def find_emergency
     @emergency = Emergency.find_by!(code: params[:id])
   end
 
-  def permitted_params
-    {
-      'create' => [:code],
-      'update' => [:resolved_at]
-    }[params[:action]] + [:fire_severity, :police_severity, :medical_severity]
+  def params_for_action
+    { 'create' => [:code], 'update' => [:resolved_at] }[params[:action]]
+    .+ [:fire_severity, :police_severity, :medical_severity]
   end
 end
