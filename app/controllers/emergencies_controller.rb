@@ -30,16 +30,16 @@ class EmergenciesController < ApplicationController
 
   private
 
-  def permitted_params
-    params.require(:emergency).permit(params_for_action)
-  end
-
   def find_emergency
     @emergency = Emergency.find_by!(code: params[:id])
   end
 
   def params_for_action
     { 'create' => [:code], 'update' => [:resolved_at] }[params[:action]]
-    .+ [:fire_severity, :police_severity, :medical_severity]
+      .+ [:fire_severity, :police_severity, :medical_severity]
+  end
+
+  def permitted_params
+    params.require(:emergency).permit(params_for_action)
   end
 end
