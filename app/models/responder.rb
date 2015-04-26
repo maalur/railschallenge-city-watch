@@ -46,10 +46,23 @@ class Responder < ActiveRecord::Base
   #
   def self.dispatch_for(emergency)
     full_response = true
+    capacities_map = map_of_available_capacities
     RESPONDER_TYPES.each do |type|
-      full_response = false unless dispatch_for_by_type(emergency, type)
+      full_response = false unless dispatch_by_type(emergency, type, capacities_map[type])
     end
     full_response
+  end
+
+  #
+  # Returns a hash of responder types with an array of available capacities.
+  #
+  # => { 'Fire' => [1, 2], 'Police' => [3, 4], 'Medical', [5, 6] }
+  #
+  def self.map_of_available_capacities
+    responders = Responder.available.order(capacity: :desc)
+    capacities_map = Hash.new([])
+    responders.each { |responder| capacities_map[responder.type] += [responder.capacity] }
+    capacities_map
   end
 
   #
@@ -58,10 +71,10 @@ class Responder < ActiveRecord::Base
   #
   # emergency: Emergency instance
   # type: string
+  # available_capacities: array[integer]
   #
-  def self.dispatch_for_by_type(emergency, type)
+  def self.dispatch_by_type(emergency, type, available_capacities)
     severity = emergency.send("#{type.downcase}_severity")
-    available_capacities = all_by_type(type).available.order(capacity: :desc).pluck(:capacity)
     best_capacities, response_met = emergency.find_best(available_capacities, severity)
     best_responders = all_by_type(type).available.where(capacity: best_capacities)
     group_assign_to(best_responders, emergency)
