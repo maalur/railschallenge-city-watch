@@ -36,9 +36,10 @@ class Responder < ActiveRecord::Base
   # type: string
   # available_capacities: array of integers
   #
-  def self.dispatch_by_type(emergency, type, available_capacities)
-    severity = emergency.send("#{type.downcase}_severity")
-    best_capacities, response_met = emergency.find_best(available_capacities, severity)
+  def self.dispatch_by_type(emergency, type, capacities)
+    severity = emergency.severity(type)
+    best_capacities, response_met = emergency.fast_dispatch_for(capacities, severity) ||
+                                    emergency.best_dispatch_for(capacities, severity)
 
     all_by_type(type)
       .available

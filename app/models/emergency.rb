@@ -15,18 +15,11 @@ class Emergency < ActiveRecord::Base
   end
 
   #
-  # Requests a dispatch if a response is needed, then updates full_response.
-  #
-  def dispatch!
-    full_response! if !response_required? || Responder.dispatch_for(self)
-  end
-
-  #
   # Returns an array of:
   #   - array of integers
   #   - boolean
   #
-  # This is an implementation of the coin change algorithm that only
+  # This is an implementation of a coin change algorithm that only
   # looks for exact matches. If an exact match is not found, it increases
   # the match value by 1 and tries again until a match is found. This
   # returns the collection of capacities that can provide the lowest full
@@ -37,13 +30,12 @@ class Emergency < ActiveRecord::Base
   #
   # emergency.find_best([5, 4, 2, 1], 8) => [[5, 2, 1], true]
   #
-  def find_best(available, severity)
-    max_capacity = available.reduce(0, :+)
+  def best_dispatch_for(available, severity)
     i = 0
     response = 0
     best_available = []
 
-    until [severity, max_capacity].include?(response)
+    until severity == response
       best_available = []
       response = 0 - i
 
@@ -58,6 +50,37 @@ class Emergency < ActiveRecord::Base
     end
 
     [best_available, severity <= response + i]
+  end
+
+  #
+  # Requests a dispatch if a response is needed, then updates full_response.
+  #
+  def dispatch!
+    full_response! if !response_required? || Responder.dispatch_for(self)
+  end
+
+  #
+  # Returns false if no quick dispatch match is found.
+  # If a quick match is found, it returns an array of:
+  #   - array of integers
+  #   - boolean
+  #
+  # available: array of integers
+  # severity: integer
+  #
+  # emergency.fast_dispatch([5, 4, 2, 1], 7) => false
+  # emergency.fast_dispatch([5, 4, 2, 1], 0) => [[], true]
+  # emergency.fast_dispatch([5, 4, 2, 1], 4) => [[4], true]
+  # emergency.fast_dispatch([5, 4, 2, 1], 13) => [[5, 4, 2, 1], false]
+  # emergency.fast_dispatch([5, 4, 2, 1], 12) => [[5, 4, 2, 1], true]
+  #
+  def fast_dispatch_for(available, severity)
+    return [[], true] if severity.zero?
+    return [severity, true] if available.include?(severity)
+    max_capacity = available.reduce(0, :+)
+    return [available, false] if severity > max_capacity
+    return [available, true] if severity == max_capacity
+    false
   end
 
   #
@@ -79,5 +102,12 @@ class Emergency < ActiveRecord::Base
   #
   def response_required?
     fire_severity + police_severity + medical_severity > 0
+  end
+
+  #
+  # Returns the severity of a specified type.
+  #
+  def severity(type)
+    send("#{type.downcase}_severity")
   end
 end
